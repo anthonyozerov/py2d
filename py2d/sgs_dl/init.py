@@ -10,7 +10,7 @@ def initialize_model(filename):
     print(f'DL SGS model is on: {cnn.device}')
     # print(isinstance(cnn.cnn, nn.Module))
     # print(type(cnn.cnn))
-    model = nn.Sequential(nn.ModuleList([cnn.cnn.eval()]))
+    # model = nn.Sequential(nn.ModuleList([cnn.cnn.eval()]))
     # print(dir(cnn.cnn))
     # jaxmodel = t2j(model)
     # jaxmodel = ivy.transpile(model, source='torch', target='jax')

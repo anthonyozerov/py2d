@@ -478,26 +478,28 @@ class SGSModel:
         if not hasattr(self, 'model'):
             self.model = initialize_model(self.cnn_config['model_path'])
             self.model_norm = initialize_model_norm(self.cnn_config['norm_path'])
-        # pass Psi, Omega into the model
 
+        # pass Psi, Omega into the model
         model_output = evaluate_model(self.model, self.model_norm, {'psi': Psi, 'omega': Omega})
 
-        # convert output from torch array to jax array
-        # and make it float64
-
+        # make output array float64
         model_output = model_output.astype(jnp.float64)
 
         if self.cnn_config['resid']:
-            PiOmega_hat_GM4, eddy_viscosity = self.PiOmegaGM4_method()
-            PiOmega_GM4 = jnp.fft.irfft2(PiOmega_hat_GM4)
+            Omega_hat = self.Omega_hat
+            U_hat, V_hat = self.U_hat, self.V_hat
+            PiOmega_GM4 = PiOmegaGM4_gaussian(Omega_hat=Omega_hat, U_hat=U_hat, V_hat=V_hat, Kx=Kx, Ky=Ky, Delta=Delta)
             PiOmega = model_output + PiOmega_GM4
         else:
             PiOmega = model_output
 
         # convert output back to spectral space
         PiOmega_hat = jnp.fft.rfft2(PiOmega)
+        eddy_viscosity = 0
 
-        return PiOmega_hat, 0 # eddy_viscosity
+        self.PiOmega_hat, self.eddy_viscosity = PiOmega_hat, eddy_viscosity
+
+        return PiOmega_hat, eddy_viscosity
 
 
     def gan_method(self, data):
