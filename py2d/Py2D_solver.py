@@ -18,6 +18,7 @@ import jax.numpy as np
 from scipy.io import loadmat, savemat
 import time as runtime
 from timeit import default_timer as timer
+from tqdm import tqdm
 
 print('JAX is using ', jax.default_backend(), jax.devices())
 
@@ -209,10 +210,6 @@ def Py2D_solver(Re, fkx, fky, alpha, beta, NX, SGSModel_string, eddyViscosityCoe
     PiOmega_eddyViscosity_model=SGSModel(Kx, Ky, Ksq, Delta, method=SGSModel_string, C_MODEL=eddyViscosityCoeff, dealias=dealias)
     # PiOmega_eddyViscosity_model.set_method(SGSModel_string) # Set SGS model to calculate PiOmega and Eddy Viscosity
 
-    if SGSModel_string == 'CNN':
-        model_path = "best_model_mcwiliams_exact.pt"
-        cnn_model = init_model(model_type='mcwiliams', model_path=model_path)
-
     Omega0_hat, Omega1_hat, Psi0_hat, Psi1_hat, time,last_file_number_IC, last_file_number_data = initialize_conditions(
         NX, Kx, Ky, invKsq, readTrue, resumeSim, ICnum, SAVE_DIR_IC, SAVE_DIR_DATA )
 
@@ -221,7 +218,7 @@ def Py2D_solver(Re, fkx, fky, alpha, beta, NX, SGSModel_string, eddyViscosityCoe
     ## 0 meanns previous time step, 1 means current time step
     start_time = runtime.time()
 
-    for it in range(maxit):
+    for it in tqdm(range(maxit)):
 
 
         if it == 0:

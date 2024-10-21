@@ -1,5 +1,6 @@
 import jax.numpy as jnp
 import numpy as np
+import yaml
 
 from py2d.eddy_viscosity_models import eddy_viscosity_smag, characteristic_strain_rate_smag, coefficient_dsmag_PsiOmega
 from py2d.eddy_viscosity_models import eddy_viscosity_leith, characteristic_omega_leith, coefficient_dleith_PsiOmega
@@ -8,7 +9,10 @@ from py2d.gradient_model import PiOmegaGM2_gaussian, PiOmegaGM2_gaussian_dealias
 from py2d.gradient_model import PiOmegaGM4_box, PiOmegaGM4_box_dealias_spectral, PiOmegaGM6_box, PiOmegaGM6_box_dealias_spectral
 from py2d.gradient_model import PiOmega_gaussian_invert, PiOmega_gaussian_invert_dealias_spectral, PiOmega_box_invert, PiOmega_box_invert_dealias_spectral
 from py2d.eddy_viscosity_models import Tau_eddy_viscosity
-from py2d.convert import Tau2PiOmega
+from py2d.convert import Tau2PiOmega, Psi2UV
+
+from py2d.sgs_dl.eval import evaluate_model
+from py2d.sgs_dl.init import initialize_model, initialize_model_norm
 
 class SGSModel:
 
@@ -359,14 +363,14 @@ class SGSModel:
         eddy_viscosity = 0
         if dealias:
             PiOmega_hat = PiOmegaGM2_gaussian_dealias_spectral(Omega_hat=Omega_hat, U_hat=U_hat, V_hat=V_hat, Kx=Kx, Ky=Ky, Delta=Delta)
-        else: 
+        else:
             PiOmega = PiOmegaGM2_gaussian(Omega_hat=Omega_hat, U_hat=U_hat, V_hat=V_hat, Kx=Kx, Ky=Ky, Delta=Delta)
             PiOmega_hat = jnp.fft.rfft2(PiOmega)
 
         self.PiOmega_hat, self.eddy_viscosity = PiOmega_hat, eddy_viscosity
 
         return PiOmega_hat, eddy_viscosity
-    
+
     def PiOmegaGM4_method(self):#, Omega_hat, U_hat, V_hat, Kx, Ky, Delta):
         Kx, Ky, Ksq, Delta, _, dealias = self.__expand_self__()
         Psi_hat, Omega_hat = self.Psi_hat, self.Omega_hat
@@ -382,7 +386,7 @@ class SGSModel:
         self.PiOmega_hat, self.eddy_viscosity = PiOmega_hat, eddy_viscosity
 
         return PiOmega_hat, eddy_viscosity
-    
+
     def PiOmegaGM4_box_method(self):#, Omega_hat, U_hat, V_hat, Kx, Ky, Delta):
         Kx, Ky, Ksq, Delta, _, dealias = self.__expand_self__()
         Psi_hat, Omega_hat = self.Psi_hat, self.Omega_hat
@@ -412,7 +416,7 @@ class SGSModel:
 
         self.PiOmega_hat, self.eddy_viscosity = PiOmega_hat, eddy_viscosity
         return PiOmega_hat, eddy_viscosity
-    
+
     def PiOmegaGM6_box_method(self):#, Omega_hat, U_hat, V_hat, Kx, Ky, Delta):
         Kx, Ky, Ksq, Delta, _, dealias = self.__expand_self__()
         Psi_hat, Omega_hat = self.Psi_hat, self.Omega_hat
@@ -427,7 +431,7 @@ class SGSModel:
 
         self.PiOmega_hat, self.eddy_viscosity = PiOmega_hat, eddy_viscosity
         return PiOmega_hat, eddy_viscosity
-    
+
     def gaussian_invert_method(self):#, Omega_hat, U_hat, V_hat, Kx, Ky, Ksq, Delta):
         Kx, Ky, Ksq, Delta, _, dealias = self.__expand_self__()
         Psi_hat, Omega_hat = self.Psi_hat, self.Omega_hat
@@ -442,7 +446,7 @@ class SGSModel:
 
         self.PiOmega_hat, self.eddy_viscosity = PiOmega_hat, eddy_viscosity
         return PiOmega_hat, eddy_viscosity
-    
+
     def box_invert_method(self):#, Omega_hat, U_hat, V_hat, Kx, Ky, Delta):
         Kx, Ky, Ksq, Delta, _, dealias = self.__expand_self__()
         Psi_hat, Omega_hat = self.Psi_hat, self.Omega_hat
@@ -458,22 +462,42 @@ class SGSModel:
         self.PiOmega_hat, self.eddy_viscosity = PiOmega_hat, eddy_viscosity
         return PiOmega_hat, eddy_viscosity
 
-    def cnn_method(self, model, input_data, Kx, Ky, Ksq):
+    def cnn_method(self):
         """Perform the CNN calculation."""
 
-        # U_hat, V_hat = Psi2UV_2DFHIT(Psi1_hat, Kx, Ky, Ksq)
-        # U = np.real(np.fft.ifft2(U_hat))
-        # V = np.real(np.fft.ifft2(V_hat))
-        # input_data = np.stack((U, V), axis=0)
-        output = evaluate_model(model, input_data)
+        Kx, Ky, Ksq, Delta, _, dealias = self.__expand_self__()
+        Psi_hat, Omega_hat = self.Psi_hat, self.Omega_hat
+        Psi = jnp.fft.irfft2(Psi_hat)
+        Omega = jnp.fft.irfft2(Omega_hat)
 
-        # Tau11CNN_hat = np.fft.fft2(output[0])
-        # Tau12CNN_hat = np.fft.fft2(output[1])
-        # Tau22CNN_hat = np.fft.fft2(output[2])
+        if not hasattr(self, 'cnn_config'):
+            with open('experiments/online/cnn_config.yaml') as f:
+                self.cnn_config = yaml.safe_load(f)
 
-        # PiOmega_hat = Tau2PiOmega_2DFHIT(Tau11CNN_hat, Tau12CNN_hat, Tau22CNN_hat, Kx, Ky, Ksq)
+        # initialize cnn if not already initialized
+        if not hasattr(self, 'model'):
+            self.model = initialize_model(self.cnn_config['model_path'])
+            self.model_norm = initialize_model_norm(self.cnn_config['norm_path'])
+        # pass Psi, Omega into the model
 
-        return output
+        model_output = evaluate_model(self.model, self.model_norm, {'psi': Psi, 'omega': Omega})
+
+        # convert output from torch array to jax array
+        # and make it float64
+
+        model_output = model_output.astype(jnp.float64)
+
+        if self.cnn_config['resid']:
+            PiOmega_hat_GM4, eddy_viscosity = self.PiOmegaGM4_method()
+            PiOmega_GM4 = jnp.fft.irfft2(PiOmega_hat_GM4)
+            PiOmega = model_output + PiOmega_GM4
+        else:
+            PiOmega = model_output
+
+        # convert output back to spectral space
+        PiOmega_hat = jnp.fft.rfft2(PiOmega)
+
+        return PiOmega_hat, 0 # eddy_viscosity
 
 
     def gan_method(self, data):
