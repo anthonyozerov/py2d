@@ -45,7 +45,8 @@ Psi2UV_spectral = jit(Psi2UV_spectral)
 # Start timer
 startTime = timer()
 
-def Py2D_solver(Re, fkx, fky, alpha, beta, NX, SGSModel_string, eddyViscosityCoeff, dt, dealias, saveData, tSAVE, tTotal, readTrue, ICnum, resumeSim):
+def Py2D_solver(Re, fkx, fky, alpha, beta, NX, SGSModel_string, eddyViscosityCoeff, dt, dealias, saveData, tSAVE, tTotal, readTrue, ICnum, resumeSim,
+                cnn_config_path=None):
 
     # -------------- RUN Configuration --------------
     # Use random initial condition or read initialization from a file or use
@@ -144,7 +145,7 @@ def Py2D_solver(Re, fkx, fky, alpha, beta, NX, SGSModel_string, eddyViscosityCoe
 
     # -------------- Directory to store data ------------------
     # Snapshots of data save at the following directory
-    SAVE_DIR, SAVE_DIR_DATA, SAVE_DIR_IC = gen_path(NX, dt, ICnum, Re, fkx, fky, alpha, beta, SGSModel_string, dealias)
+    SAVE_DIR, SAVE_DIR_DATA, SAVE_DIR_IC = gen_path(NX, dt, ICnum, Re, fkx, fky, alpha, beta, SGSModel_string, dealias, cnn_config_path)
 
     # Create directories if they aren't present
     try:
@@ -207,7 +208,8 @@ def Py2D_solver(Re, fkx, fky, alpha, beta, NX, SGSModel_string, eddyViscosityCoe
     # -------------- Initialize PiOmega Model --------------
 
     # PiOmega_eddyViscosity_model = SGSModel()  # Initialize SGS Model
-    PiOmega_eddyViscosity_model=SGSModel(Kx, Ky, Ksq, Delta, method=SGSModel_string, C_MODEL=eddyViscosityCoeff, dealias=dealias)
+    PiOmega_eddyViscosity_model=SGSModel(Kx, Ky, Ksq, Delta, method=SGSModel_string, C_MODEL=eddyViscosityCoeff, dealias=dealias,
+                                         cnn_config_path=cnn_config_path)
     # PiOmega_eddyViscosity_model.set_method(SGSModel_string) # Set SGS model to calculate PiOmega and Eddy Viscosity
 
     Omega0_hat, Omega1_hat, Psi0_hat, Psi1_hat, time,last_file_number_IC, last_file_number_data = initialize_conditions(
@@ -247,29 +249,6 @@ def Py2D_solver(Re, fkx, fky, alpha, beta, NX, SGSModel_string, eddyViscosityCoe
         PiOmega1_hat = PiOmega_eddyViscosity_model.PiOmega_hat
         eddyViscosity = PiOmega_eddyViscosity_model.eddy_viscosity
         eddyViscosityCoeff = PiOmega_eddyViscosity_model.C_MODEL
-
-        # elif SGSModel_string == 'CNN':
-        #     eddyViscosity = 0.0
-        #     input_data = prepare_data_cnn_jit(Psi1_hat, Kx, Ky, Ksq)
-        #     # input_data_normalized = normalize_data(input_data)
-        #     output_normalized = PiOmega_eddyViscosity_model.calculate(cnn_model, input_data=input_data, Kx=Kx, Ky=Ky, Ksq=Ksq)
-        #     # # Diagnosis
-        #     # print("The stats of the output are: ")
-        #     # print("Mean: " + str(output_normalized.mean(axis=(1,2))))
-        #     # print("Std: " + str(output_normalized.std(axis=(1,2))))
-
-        #     # output_mean = np.array([0.0088, 5.1263e-05, 0.0108]).reshape((3,1,1))
-        #     # output_std = np.array([0.0130, 0.0080, 0.0145]).reshape((3,1,1))
-
-        #     # output_denomralized = denormalize_data(output_normalized, mean= output_mean, std= output_std)
-        #     # output_denomralized = np.zeros((3, output_normalized.shape[1], output_normalized.shape[2]))
-        #     # for i in range(3):
-        #     #     updated_values = denormalize_data(output_normalized[i], mean= output_mean[i], std= output_std[i])
-        #     #     output_denomralized = output_denomralized.at[i, :, :].set(updated_values)
-        #     PiOmega1_hat = postproccess_data_cnn_jit(output_normalized[0], output_normalized[1], output_normalized[2], Kx, Ky, Ksq)
-        #     # print(np.abs(PiOmega_hat[0]).mean())
-        #     # PiOmega_hat = PiOmegaModel.calculate()
-
 
         # Numerical scheme for PiOmega_hat
         if PiOmega_numerical_scheme == 'E1':
@@ -316,6 +295,9 @@ def Py2D_solver(Re, fkx, fky, alpha, beta, NX, SGSModel_string, eddyViscosityCoe
             # eddyTurnoverTime = 1 / np.sqrt(np.mean(Omega ** 2))
             enstrophy = 0.5 * np.mean(Omega ** 2)
 
+            PiOmega = np.real(np.fft.irfft2(PiOmega_hat, s=[NX,NX]))
+            PiOmega_cpu = nnp.array(PiOmega)
+
             last_file_number_data = last_file_number_data + 1
             last_file_number_IC = last_file_number_IC + 1
 
@@ -338,7 +320,7 @@ def Py2D_solver(Re, fkx, fky, alpha, beta, NX, SGSModel_string, eddyViscosityCoe
                         f.write(error_message)
                     raise ValueError(error_message)
                 else:
-                    savemat(filename_data + '.mat', {"Omega":Omega_cpu, "time":time})
+                    savemat(filename_data + '.mat', {"Omega":Omega_cpu, "PiOmega": PiOmega_cpu, "time":time})
                     savemat(filename_IC + '.mat', {"Omega0_hat":Omega0_hat_cpu, "Omega1_hat":Omega1_hat_cpu, "time":time, "eddyViscosity":eddyViscosity, "eddyViscosityCoeff":eddyViscosityCoeff})
 
             except ValueError as e:

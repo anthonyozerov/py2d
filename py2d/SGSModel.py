@@ -16,7 +16,8 @@ from py2d.sgs_dl.init import initialize_model, initialize_model_norm
 
 class SGSModel:
 
-    def __init__(self, Kx, Ky, Ksq, Delta, method = 'NoSGS', C_MODEL=0, dealias=True):
+    def __init__(self, Kx, Ky, Ksq, Delta, method = 'NoSGS', C_MODEL=0, dealias=True, cnn_config_path=None):
+        self.cnn_config_path = cnn_config_path
         self.set_method(method)
         # Constants
         self.Kx = Kx
@@ -103,6 +104,11 @@ class SGSModel:
         # NN models
         elif method == 'CNN':
             self.calculate = self.cnn_method
+
+            assert self.cnn_config_path is not None, "CNN config path must be provided"
+
+            with open(self.cnn_config_path) as f:
+                self.cnn_config = yaml.safe_load(f)
         #----------------------
         elif method == 'GAN':
             self.calculate = self.gan_method
@@ -470,17 +476,15 @@ class SGSModel:
         Psi = jnp.fft.irfft2(Psi_hat)
         Omega = jnp.fft.irfft2(Omega_hat)
 
-        if not hasattr(self, 'cnn_config'):
-            with open('experiments/online/cnn_config.yaml') as f:
-                self.cnn_config = yaml.safe_load(f)
-
         # initialize cnn if not already initialized
         if not hasattr(self, 'model'):
             self.model = initialize_model(self.cnn_config['model_path'])
             self.model_norm = initialize_model_norm(self.cnn_config['norm_path'])
 
+        input_stepnorm = self.cnn_config['input_stepnorm']
+
         # pass Psi, Omega into the model
-        model_output = evaluate_model(self.model, self.model_norm, {'psi': Psi, 'omega': Omega})
+        model_output = evaluate_model(self.model, self.model_norm, {'psi': Psi, 'omega': Omega}, input_stepnorm=input_stepnorm)
 
         # make output array float64
         model_output = model_output.astype(jnp.float64)
