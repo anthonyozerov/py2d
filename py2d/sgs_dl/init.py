@@ -1,7 +1,5 @@
 from scipy.io import loadmat
 from py2d.sgs_dl.cnn import CNN
-# import ivy
-# from torch2jax import t2j
 from torch import nn
 import torch
 
@@ -9,6 +7,7 @@ def initialize_model(filename):
     # force the model to not use TensorFloat32 cores,
     # which are fast but reduce precision.
     torch.backends.cuda.matmul.allow_tf32 = False
+    torch.backends.cudnnallow_tf32 = False
 
     cnn = CNN.load_from_checkpoint(filename)
     cnn.eval()
