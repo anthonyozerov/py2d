@@ -295,8 +295,9 @@ def Py2D_solver(Re, fkx, fky, alpha, beta, NX, SGSModel_string, eddyViscosityCoe
             # eddyTurnoverTime = 1 / np.sqrt(np.mean(Omega ** 2))
             enstrophy = 0.5 * np.mean(Omega ** 2)
 
-            PiOmega = np.real(np.fft.irfft2(PiOmega_hat, s=[NX,NX]))
-            PiOmega_cpu = nnp.array(PiOmega)
+            if SGSModel_string != 'NoSGS':
+                PiOmega = np.real(np.fft.irfft2(PiOmega_hat, s=[NX,NX]))
+                PiOmega_cpu = nnp.array(PiOmega)
 
             last_file_number_data = last_file_number_data + 1
             last_file_number_IC = last_file_number_IC + 1
@@ -320,7 +321,10 @@ def Py2D_solver(Re, fkx, fky, alpha, beta, NX, SGSModel_string, eddyViscosityCoe
                         f.write(error_message)
                     raise ValueError(error_message)
                 else:
-                    savemat(filename_data + '.mat', {"Omega":Omega_cpu, "PiOmega": PiOmega_cpu, "time":time})
+                    data_dict = {"Omega":Omega_cpu, "time":time}
+                    if SGSModel_string != 'NoSGS':
+                        data_dict = data_dict | {"PiOmega": PiOmega_cpu}
+                    savemat(filename_data + '.mat', data_dict)
                     savemat(filename_IC + '.mat', {"Omega0_hat":Omega0_hat_cpu, "Omega1_hat":Omega1_hat_cpu, "time":time, "eddyViscosity":eddyViscosity, "eddyViscosityCoeff":eddyViscosityCoeff})
 
             except ValueError as e:
