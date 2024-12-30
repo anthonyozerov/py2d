@@ -1,19 +1,21 @@
-import torch
 import numpy as np
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
-import tensorflow as tf
 
 def evaluate_model(model, model_norm, input_data_dict, whichlib, input_stepnorm=False):
     input_data = []
+
+    if whichlib == 'pytorch':
+        import torch
+        converter = torch.Tensor
+    elif whichlib == 'tensorflow':
+        import tensorflow as tf
+        converter = tf.convert_to_tensor
+    elif whichlib == 'onnx':
+        converter = np.array
+
     for name, data in input_data_dict.items():
         data = np.array(data)
-        if whichlib == 'pytorch':
-            converter = torch.Tensor
-        elif whichlib == 'tensorflow':
-            converter = tf.convert_to_tensor
-        elif whichlib == 'onnx':
-            converter = np.array
 
         if input_stepnorm:
             input_data.append(converter((data - data.mean())/data.std()))
