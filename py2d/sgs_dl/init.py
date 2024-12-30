@@ -33,7 +33,7 @@ def initialize_model(filename, whichlib):
         sess = rt.InferenceSession(filename, providers=providers)
         print(sess.get_providers())
 
-        return ort_session
+        return sess
     else:
         raise ValueError(f'Unsupported library {whichlib}')
 
