@@ -1,24 +1,35 @@
 from scipy.io import loadmat
-from py2d.sgs_dl.cnn import CNN
-from torch import nn
-import torch
 
-def initialize_model(filename):
-    # force the model to not use TensorFloat32 cores,
-    # which are fast but reduce precision.
-    torch.backends.cuda.matmul.allow_tf32 = False
-    torch.backends.cudnnallow_tf32 = False
+def initialize_model(filename, whichlib):
+    if whichlib == 'pytorch':
+        # assume it is a pytorch model
+        from py2d.sgs_dl.cnn import CNN
+        import torch
 
-    cnn = CNN.load_from_checkpoint(filename)
-    cnn.eval()
-    print(f'DL SGS model is on: {cnn.device}')
-    # print(isinstance(cnn.cnn, nn.Module))
-    # print(type(cnn.cnn))
-    # model = nn.Sequential(nn.ModuleList([cnn.cnn.eval()]))
-    # print(dir(cnn.cnn))
-    # jaxmodel = t2j(model)
-    # jaxmodel = ivy.transpile(model, source='torch', target='jax')
-    return cnn.cnn
+
+        # force the model to not use TensorFloat32 cores,
+        # which are fast but reduce precision.
+        torch.backends.cuda.matmul.allow_tf32 = False
+        torch.backends.cudnnallow_tf32 = False
+
+        cnn = CNN.load_from_checkpoint(filename)
+        cnn.eval()
+        print(f'DL SGS model is on: {cnn.device}')
+
+        return cnn.cnn
+    elif whichlib == 'tensorflow':
+        # assume it is a tensorflow model
+        from tensorflow.keras.models import load_model
+        model = load_model(filename)
+        model.summary()
+        return model
+    elif whichlib == 'onnx':
+        import onnxruntime as ort
+        ort_session = ort.InferenceSession(filename)
+        print(ort_session.get_providers())
+        return ort_session
+    else:
+        raise ValueError(f'Unsupported library {whichlib}')
 
 def initialize_model_norm(filename):
     """Initialize the normalization dictionary from a file."""

@@ -476,15 +476,23 @@ class SGSModel:
         Psi = jnp.fft.irfft2(Psi_hat)
         Omega = jnp.fft.irfft2(Omega_hat)
 
+        whichlib = self.cnn_config['library']
+
         # initialize cnn if not already initialized
         if not hasattr(self, 'model'):
-            self.model = initialize_model(self.cnn_config['model_path'])
+            self.model = initialize_model(self.cnn_config['model_path'], whichlib)
             self.model_norm = initialize_model_norm(self.cnn_config['norm_path'])
 
         input_stepnorm = self.cnn_config['input_stepnorm']
 
         # pass Psi, Omega into the model
-        model_output = evaluate_model(self.model, self.model_norm, {'psi': Psi, 'omega': Omega}, input_stepnorm=input_stepnorm)
+        model_output = evaluate_model(
+                self.model,
+                self.model_norm,
+                {'psi': Psi, 'omega': Omega},
+                whichlib=whichlib,
+                input_stepnorm=input_stepnorm
+            )
 
         # make output array float64
         model_output = model_output.astype(jnp.float64)
