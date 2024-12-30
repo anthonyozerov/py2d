@@ -24,9 +24,15 @@ def initialize_model(filename, whichlib):
         model.summary()
         return model
     elif whichlib == 'onnx':
-        import onnxruntime as ort
-        ort_session = ort.InferenceSession(filename)
-        print(ort_session.get_providers())
+        import onnxruntime as rt
+        print(rt.get_available_providers())
+        if 'CUDAExecutionProvider' in rt.get_available_providers():
+            providers = [("CUDAExecutionProvider", {"use_tf32": 0})]
+        else:
+            providers = ["CPUExecutionProvider"]
+        sess = rt.InferenceSession(filename, providers=providers)
+        print(sess.get_providers())
+
         return ort_session
     else:
         raise ValueError(f'Unsupported library {whichlib}')
