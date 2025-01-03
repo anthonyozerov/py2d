@@ -20,7 +20,7 @@ import time as runtime
 from timeit import default_timer as timer
 from tqdm import tqdm
 
-print('JAX is using ', jax.default_backend(), jax.devices())
+print("JAX is using ", jax.default_backend(), jax.devices())
 
 # Import Custom Module
 from py2d.convection_conserved import convection_conserved, convection_conserved_dealias
@@ -30,11 +30,21 @@ from py2d.util import regrid
 
 # from py2d.uv2tau_CNN import *
 
-from py2d.initialize import gridgen, initialize_wavenumbers_rfft2, initialize_perturbation
-from py2d.datamanager import gen_path, get_last_file, set_last_file, save_settings, pretty_print_table
+from py2d.initialize import (
+    gridgen,
+    initialize_wavenumbers_rfft2,
+    initialize_perturbation,
+)
+from py2d.datamanager import (
+    gen_path,
+    get_last_file,
+    set_last_file,
+    save_settings,
+    pretty_print_table,
+)
 
 # Enable x64 Precision for Jax
-jax.config.update('jax_enable_x64', True)
+jax.config.update("jax_enable_x64", True)
 
 ## -------------- Initialize the kernels in JIT --------------
 Omega2Psi_spectral = jit(Omega2Psi_spectral)
@@ -45,9 +55,26 @@ Psi2UV_spectral = jit(Psi2UV_spectral)
 # Start timer
 startTime = timer()
 
-def Py2D_solver(Re, fkx, fky, alpha, beta, NX, SGSModel_string, eddyViscosityCoeff, dt, dealias, saveData, tSAVE, tTotal, readTrue, ICnum, resumeSim,
-                cnn_config_path=None):
 
+def Py2D_solver(
+    Re,
+    fkx,
+    fky,
+    alpha,
+    beta,
+    NX,
+    SGSModel_string,
+    eddyViscosityCoeff,
+    dt,
+    dealias,
+    saveData,
+    tSAVE,
+    tTotal,
+    readTrue,
+    ICnum,
+    resumeSim,
+    cnn_config_path=None,
+):
     # -------------- RUN Configuration --------------
     # Use random initial condition or read initialization from a file or use
     #     readTrue = False
@@ -98,7 +125,9 @@ def Py2D_solver(Re, fkx, fky, alpha, beta, NX, SGSModel_string, eddyViscosityCoe
     # eddyViscosityCoeff = 0.1 needed for SMAG and LEITH
 
     # SGS Model - PiOmega numerical scheme (Crank nicholson scheme used for time integration and eddy viscosity)
-    PiOmega_numerical_scheme = 'E1' # E1: Euler 1st order, AB2: Adam Bashforth 2nd order
+    PiOmega_numerical_scheme = (
+        "E1"  # E1: Euler 1st order, AB2: Adam Bashforth 2nd order
+    )
 
     # -------------- Deterministic forcing Parameters--------------
     # Wavenumber in x direction
@@ -145,7 +174,19 @@ def Py2D_solver(Re, fkx, fky, alpha, beta, NX, SGSModel_string, eddyViscosityCoe
 
     # -------------- Directory to store data ------------------
     # Snapshots of data save at the following directory
-    SAVE_DIR, SAVE_DIR_DATA, SAVE_DIR_IC = gen_path(NX, dt, ICnum, Re, fkx, fky, alpha, beta, SGSModel_string, dealias, cnn_config_path)
+    SAVE_DIR, SAVE_DIR_DATA, SAVE_DIR_IC = gen_path(
+        NX,
+        dt,
+        ICnum,
+        Re,
+        fkx,
+        fky,
+        alpha,
+        beta,
+        SGSModel_string,
+        dealias,
+        cnn_config_path,
+    )
 
     # Create directories if they aren't present
     try:
@@ -156,49 +197,64 @@ def Py2D_solver(Re, fkx, fky, alpha, beta, NX, SGSModel_string, eddyViscosityCoe
 
     # -------------- Print the run configuration --------------
 
-    table_flow_spec2 = [["Reynolds Number (Re)", Re],
-                       ["Deterministic Forcing Wavenumber (fkx)", fkx],
-                       ["Deterministic Forcing Wavenumber (fky)", fky],
-                       ["Linear Drag Coefficient (alpha)", alpha],
-                       ["Beta plan coefficient (beta)", beta],
-                       ["SGS Model ", SGSModel_string],
-                       ["Eddy Viscosity Coefficient (eddyViscosityCoeff)", eddyViscosityCoeff],
-                       ["Saving Directory", SAVE_DIR_DATA]]
+    table_flow_spec2 = [
+        ["Reynolds Number (Re)", Re],
+        ["Deterministic Forcing Wavenumber (fkx)", fkx],
+        ["Deterministic Forcing Wavenumber (fky)", fky],
+        ["Linear Drag Coefficient (alpha)", alpha],
+        ["Beta plan coefficient (beta)", beta],
+        ["SGS Model ", SGSModel_string],
+        ["Eddy Viscosity Coefficient (eddyViscosityCoeff)", eddyViscosityCoeff],
+        ["Saving Directory", SAVE_DIR_DATA],
+    ]
 
-    geometry_mesh2 = [["Number of Grid Points (NX)", NX],
-                     ["Domain Length (L)", Lx],
-                     ["Mesh size (dx)", dx]]
-    
-    run_config2 = [["Time Step (dt)", dt],
-                  ["De-aliasing", dealias],
-                  ["Resume Simulation", resumeSim],
-                  ["Read Initialization (readTrue), If False: Will read IC from a file", readTrue],
-                  ["Initial Condition Number (ICnum)", ICnum],
-                  ["Saving Data  (saveData)", saveData],
-                  ["Save data every t th timestep (tSAVE)", tSAVE],
-                  ["Save data every Nth iteration (NSAVE)", NSAVE],
-                  ["Length of simulation (tTotal)", tTotal],
-                  ["Maximum Number of Iterations (maxit)", maxit]]
+    geometry_mesh2 = [
+        ["Number of Grid Points (NX)", NX],
+        ["Domain Length (L)", Lx],
+        ["Mesh size (dx)", dx],
+    ]
+
+    run_config2 = [
+        ["Time Step (dt)", dt],
+        ["De-aliasing", dealias],
+        ["Resume Simulation", resumeSim],
+        [
+            "Read Initialization (readTrue), If False: Will read IC from a file",
+            readTrue,
+        ],
+        ["Initial Condition Number (ICnum)", ICnum],
+        ["Saving Data  (saveData)", saveData],
+        ["Save data every t th timestep (tSAVE)", tSAVE],
+        ["Save data every Nth iteration (NSAVE)", NSAVE],
+        ["Length of simulation (tTotal)", tTotal],
+        ["Maximum Number of Iterations (maxit)", maxit],
+    ]
 
     pretty_print_table("System Parameters", table_flow_spec2)
     pretty_print_table("Geometry and Mesh", geometry_mesh2)
     pretty_print_table("Run Configuration", run_config2)
 
-    # Save the parameters to a file in writing 'w' or appending 'a' mode              
+    # Save the parameters to a file in writing 'w' or appending 'a' mode
     if resumeSim:
-        mode = 'a'
+        mode = "a"
     else:
-        mode = 'w'
+        mode = "w"
     # Open file in write mode and save parameters
-    filename = SAVE_DIR + 'parameters.txt'
+    filename = SAVE_DIR + "parameters.txt"
     with open(filename, mode) as f:
-
-        empty_variable = [['', ''],['****************************************************', '****************************************************'], ['', '']]
+        empty_variable = [
+            ["", ""],
+            [
+                "****************************************************",
+                "****************************************************",
+            ],
+            ["", ""],
+        ]
 
         # Write each variable to a new line in the file
         for items in [table_flow_spec2, geometry_mesh2, run_config2, empty_variable]:
             for item in items:
-                f.write(f'{item[0]}: {item[1]}\n')
+                f.write(f"{item[0]}: {item[1]}\n")
 
     print("Parameters of the flow saved to saved to " + filename)
 
@@ -208,12 +264,29 @@ def Py2D_solver(Re, fkx, fky, alpha, beta, NX, SGSModel_string, eddyViscosityCoe
     # -------------- Initialize PiOmega Model --------------
 
     # PiOmega_eddyViscosity_model = SGSModel()  # Initialize SGS Model
-    PiOmega_eddyViscosity_model=SGSModel(Kx, Ky, Ksq, Delta, method=SGSModel_string, C_MODEL=eddyViscosityCoeff, dealias=dealias,
-                                         cnn_config_path=cnn_config_path)
+    PiOmega_eddyViscosity_model = SGSModel(
+        Kx,
+        Ky,
+        Ksq,
+        Delta,
+        method=SGSModel_string,
+        C_MODEL=eddyViscosityCoeff,
+        dealias=dealias,
+        cnn_config_path=cnn_config_path,
+    )
     # PiOmega_eddyViscosity_model.set_method(SGSModel_string) # Set SGS model to calculate PiOmega and Eddy Viscosity
 
-    Omega0_hat, Omega1_hat, Psi0_hat, Psi1_hat, time,last_file_number_IC, last_file_number_data = initialize_conditions(
-        NX, Kx, Ky, invKsq, readTrue, resumeSim, ICnum, SAVE_DIR_IC, SAVE_DIR_DATA )
+    (
+        Omega0_hat,
+        Omega1_hat,
+        Psi0_hat,
+        Psi1_hat,
+        time,
+        last_file_number_IC,
+        last_file_number_data,
+    ) = initialize_conditions(
+        NX, Kx, Ky, invKsq, readTrue, resumeSim, ICnum, SAVE_DIR_IC, SAVE_DIR_DATA
+    )
 
     # -------------- Main iteration loop --------------
     print("-------------- Main iteration loop --------------")
@@ -221,53 +294,59 @@ def Py2D_solver(Re, fkx, fky, alpha, beta, NX, SGSModel_string, eddyViscosityCoe
     start_time = runtime.time()
 
     for it in tqdm(range(maxit)):
-
-
         if it == 0:
             U0_hat, V0_hat = Psi2UV_spectral(Psi0_hat, Kx, Ky)
             U1_hat, V1_hat = U0_hat, V0_hat
 
             if dealias:
-                convec0_hat = convection_conserved_dealias(Omega0_hat, U0_hat, V0_hat, Kx, Ky)
+                convec0_hat = convection_conserved_dealias(
+                    Omega0_hat, U0_hat, V0_hat, Kx, Ky
+                )
             else:
                 convec0_hat = convection_conserved(Omega0_hat, U0_hat, V0_hat, Kx, Ky)
 
         if dealias:
-            convec1_hat = convection_conserved_dealias(Omega1_hat, U1_hat, V1_hat, Kx, Ky)
+            convec1_hat = convection_conserved_dealias(
+                Omega1_hat, U1_hat, V1_hat, Kx, Ky
+            )
         else:
             convec1_hat = convection_conserved(Omega1_hat, U1_hat, V1_hat, Kx, Ky)
 
         # 2 Adam bash forth
-        convec_hat = 1.5*convec1_hat - 0.5*convec0_hat
+        convec_hat = 1.5 * convec1_hat - 0.5 * convec0_hat
 
-        diffu_hat = -Ksq*Omega1_hat
+        diffu_hat = -Ksq * Omega1_hat
 
-        PiOmega_eddyViscosity_model.update_state(Psi1_hat,Omega1_hat,U1_hat,V1_hat)
+        PiOmega_eddyViscosity_model.update_state(Psi1_hat, Omega1_hat, U1_hat, V1_hat)
         PiOmega_eddyViscosity_model.calculate()
-
 
         PiOmega1_hat = PiOmega_eddyViscosity_model.PiOmega_hat
         eddyViscosity = PiOmega_eddyViscosity_model.eddy_viscosity
         eddyViscosityCoeff = PiOmega_eddyViscosity_model.C_MODEL
 
         # Numerical scheme for PiOmega_hat
-        if PiOmega_numerical_scheme == 'E1':
+        if PiOmega_numerical_scheme == "E1":
             PiOmega_hat = PiOmega1_hat
 
-        elif PiOmega_numerical_scheme == 'AB2':
-
-            if it ==0:
+        elif PiOmega_numerical_scheme == "AB2":
+            if it == 0:
                 PiOmega0_hat = PiOmega1_hat
 
-            PiOmega_hat = 1.5*PiOmega1_hat-0.5*PiOmega0_hat
+            PiOmega_hat = 1.5 * PiOmega1_hat - 0.5 * PiOmega0_hat
 
         # 2 Adam bash forth Crank Nicolson
-        RHS = Omega1_hat - dt*(convec_hat) + dt*0.5*(nu+eddyViscosity)*diffu_hat - dt*(Fk_hat+PiOmega_hat) + dt*beta*V1_hat
+        RHS = (
+            Omega1_hat
+            - dt * (convec_hat)
+            + dt * 0.5 * (nu + eddyViscosity) * diffu_hat
+            - dt * (Fk_hat + PiOmega_hat)
+            + dt * beta * V1_hat
+        )
 
         # Older version of RHS: Moein delete later
         # RHS = Omega1_hat + dt*(-1.5*convec1_hat + 0.5*convec0_hat) + dt*0.5*(nu+ve)*diffu_hat + dt*(Fk_hat-PiOmega_hat)
 
-        Omega_hat_temp = RHS/(1+dt*alpha + 0.5*dt*(nu+eddyViscosity)*Ksq)
+        Omega_hat_temp = RHS / (1 + dt * alpha + 0.5 * dt * (nu + eddyViscosity) * Ksq)
 
         # Replacing the previous time step with the current one
         Omega0_hat = Omega1_hat
@@ -282,9 +361,8 @@ def Py2D_solver(Re, fkx, fky, alpha, beta, NX, SGSModel_string, eddyViscosityCoe
 
         time = time + dt
 
-        if saveData and np.mod(it+1, (NSAVE)) == 0:
-
-            Omega = np.real(np.fft.irfft2(Omega1_hat, s=[NX,NX]))
+        if saveData and np.mod(it + 1, (NSAVE)) == 0:
+            Omega = np.real(np.fft.irfft2(Omega1_hat, s=[NX, NX]))
             # Psi = np.real(np.fft.irfft2(Psi1_hat, s=[NX,NX]))
 
             # Converting to numpy array
@@ -293,10 +371,10 @@ def Py2D_solver(Re, fkx, fky, alpha, beta, NX, SGSModel_string, eddyViscosityCoe
             Omega0_hat_cpu = nnp.array(Omega0_hat)
             Omega1_hat_cpu = nnp.array(Omega1_hat)
             # eddyTurnoverTime = 1 / np.sqrt(np.mean(Omega ** 2))
-            enstrophy = 0.5 * np.mean(Omega ** 2)
+            enstrophy = 0.5 * np.mean(Omega**2)
 
-            if SGSModel_string != 'NoSGS':
-                PiOmega = np.real(np.fft.irfft2(PiOmega_hat, s=[NX,NX]))
+            if SGSModel_string != "NoSGS":
+                PiOmega = np.real(np.fft.irfft2(PiOmega_hat, s=[NX, NX]))
                 PiOmega_cpu = nnp.array(PiOmega)
 
             last_file_number_data = last_file_number_data + 1
@@ -308,174 +386,209 @@ def Py2D_solver(Re, fkx, fky, alpha, beta, NX, SGSModel_string, eddyViscosityCoe
             if last_file_number_data > 2:
                 # Remove the previous file
                 try:
-                    os.remove(SAVE_DIR_IC + str(last_file_number_data - 2) + '.mat')
+                    os.remove(SAVE_DIR_IC + str(last_file_number_data - 2) + ".mat")
                 except FileNotFoundError:
                     pass
 
             try:
                 if np.isnan(enstrophy).any():
-                    filename = SAVE_DIR + 'unstable.txt'
-                    error_message = "eddyTurnoverTime is NaN. Stopping execution at time = " + str(time)
+                    filename = SAVE_DIR + "unstable.txt"
+                    error_message = (
+                        "eddyTurnoverTime is NaN. Stopping execution at time = "
+                        + str(time)
+                    )
 
-                    with open(filename, 'w') as f:
+                    with open(filename, "w") as f:
                         f.write(error_message)
                     raise ValueError(error_message)
                 else:
-                    data_dict = {"Omega":Omega_cpu, "time":time}
-                    if SGSModel_string != 'NoSGS':
+                    data_dict = {"Omega": Omega_cpu, "time": time}
+                    if SGSModel_string != "NoSGS":
                         data_dict = data_dict | {"PiOmega": PiOmega_cpu}
-                    savemat(filename_data + '.mat', data_dict)
-                    savemat(filename_IC + '.mat', {"Omega0_hat":Omega0_hat_cpu, "Omega1_hat":Omega1_hat_cpu, "time":time, "eddyViscosity":eddyViscosity, "eddyViscosityCoeff":eddyViscosityCoeff})
+                    savemat(filename_data + ".mat", data_dict)
+                    savemat(
+                        filename_IC + ".mat",
+                        {
+                            "Omega0_hat": Omega0_hat_cpu,
+                            "Omega1_hat": Omega1_hat_cpu,
+                            "time": time,
+                            "eddyViscosity": eddyViscosity,
+                            "eddyViscosityCoeff": eddyViscosityCoeff,
+                        },
+                    )
 
             except ValueError as e:
                 print(str(e))
                 quit()
 
             # print('Time = {:.6f} -- Eddy Turnover Time = {:.6f} -- C = {:.4f} -- Eddy viscosity = {:.6f} ** Saved {}'.format(time, eddyTurnoverTime, eddyViscosityCoeff, eddyViscosity, filename_data))
-            print('Time={:.6f} -- Enstrophy={:.6f} ** file#{}'.format(time, enstrophy, last_file_number_data))
-
+            print(
+                "Time={:.6f} -- Enstrophy={:.6f} ** file#{}".format(
+                    time, enstrophy, last_file_number_data
+                )
+            )
 
     # Print elapsed time
-    print('Total Iteration: ', it+1)
+    print("Total Iteration: ", it + 1)
     endTime = timer()
-    print('Total Time Taken: ', endTime-startTime)
+    print("Total Time Taken: ", endTime - startTime)
 
-    Omega = np.real(np.fft.irfft2(Omega1_hat, s=[NX,NX]))
+    Omega = np.real(np.fft.irfft2(Omega1_hat, s=[NX, NX]))
     Omega_cpu = nnp.array(Omega)
     return Omega_cpu
 
-def initialize_conditions(NX, Kx, Ky, invKsq, readTrue, resumeSim, ICnum, SAVE_DIR_IC, SAVE_DIR_DATA ):
 
-        if readTrue:
+def initialize_conditions(
+    NX, Kx, Ky, invKsq, readTrue, resumeSim, ICnum, SAVE_DIR_IC, SAVE_DIR_DATA
+):
+    if readTrue:
+        # -------------- Initialization using pertubration --------------
+        w1_hat, psi_hat, psiPrevious_hat, psiCurrent_hat = initialize_perturbation(
+            NX, Kx, Ky
+        )
+        time = 0.0
 
-            # -------------- Initialization using pertubration --------------
-            w1_hat, psi_hat, psiPrevious_hat, psiCurrent_hat = initialize_perturbation(NX, Kx, Ky)
-            time = 0.0
+    else:
+        if resumeSim:
+            # Get the last file name (filenames are integers)
+            last_file_number_data = get_last_file(SAVE_DIR_DATA)
+            last_file_number_IC = get_last_file(SAVE_DIR_IC)
+
+            # Print last file names (filenames are integers)
+            if last_file_number_data is not None:
+                print(f"Last data file number: {last_file_number_data}")
+            else:
+                print("No .mat files found")
+
+            if last_file_number_IC is not None:
+                print(f"Last IC file number: {last_file_number_IC}")
+            else:
+                raise ValueError(
+                    "No .mat initialization files found to resume the simulation"
+                )
+
+            # Load initial condition to resume simulation
+            # Resume from the second last saved file -
+            # the last saved file is often corrupted since the jobs stop (reach wall clocktime limit) while the file is being saved.
+            last_file_number_data = last_file_number_data - 1
+            last_file_number_IC = last_file_number_IC - 1
+
+            data_Poi = loadmat(SAVE_DIR_IC + str(last_file_number_IC) + ".mat")
+            Omega0_hat_cpu = data_Poi["Omega0_hat"]
+            Omega1_hat_cpu = data_Poi["Omega1_hat"]
+            time = data_Poi["time"]
+
+            Omega_shape = Omega0_hat_cpu.shape
+            if Omega_shape[0] == Omega_shape[1]:
+                # If initial condition is square (fft2 fromat), convert to rfft2 format
+                from py2d.util import fft2_to_rfft2
+
+                Omega0_hat_cpu = fft2_to_rfft2(Omega0_hat_cpu)
+                Omega1_hat_cpu = fft2_to_rfft2(Omega1_hat_cpu)
+            else:
+                pass
+
+            # Convert numpy initialization arrays to jax array
+            Omega0_hat = np.array(Omega0_hat_cpu)
+            Omega1_hat = np.array(Omega1_hat_cpu)
+            time = time[0][0]
+
+            Psi0_hat = Omega2Psi_spectral(Omega0_hat, invKsq)
+            Psi1_hat = Omega2Psi_spectral(Omega1_hat, invKsq)
 
         else:
+            # Path of Initial Conditions
 
-            if resumeSim:
-                # Get the last file name (filenames are integers)
-                last_file_number_data = get_last_file(SAVE_DIR_DATA)
-                last_file_number_IC = get_last_file(SAVE_DIR_IC)
+            # Get the absolute path to the directory
+            base_path = Path(__file__).parent.absolute()
 
-                # Print last file names (filenames are integers)
-                if last_file_number_data is not None:
-                    print(f"Last data file number: {last_file_number_data}")
-                else:
-                    print("No .mat files found")
-
-                if last_file_number_IC is not None:
-                    print(f"Last IC file number: {last_file_number_IC}")
-                else:
-                    raise ValueError("No .mat initialization files found to resume the simulation")
-
-                # Load initial condition to resume simulation
-                # Resume from the second last saved file -
-                # the last saved file is often corrupted since the jobs stop (reach wall clocktime limit) while the file is being saved.
-                last_file_number_data = last_file_number_data - 1
-                last_file_number_IC = last_file_number_IC - 1
-
-                data_Poi = loadmat(SAVE_DIR_IC + str(last_file_number_IC) + '.mat')
-                Omega0_hat_cpu = data_Poi["Omega0_hat"]
-                Omega1_hat_cpu = data_Poi["Omega1_hat"]
-                time = data_Poi["time"]
-
-                Omega_shape = Omega0_hat_cpu.shape
-                if Omega_shape[0] == Omega_shape[1]:
-                    # If initial condition is square (fft2 fromat), convert to rfft2 format
-                    from py2d.util import fft2_to_rfft2
-                    Omega0_hat_cpu = fft2_to_rfft2(Omega0_hat_cpu)
-                    Omega1_hat_cpu = fft2_to_rfft2(Omega1_hat_cpu)
-                else:
-                    pass
-
-                # Convert numpy initialization arrays to jax array
-                Omega0_hat = np.array(Omega0_hat_cpu)
-                Omega1_hat = np.array(Omega1_hat_cpu)
-                time = time[0][0]
-
-                Psi0_hat = Omega2Psi_spectral(Omega0_hat, invKsq)
-                Psi1_hat = Omega2Psi_spectral(Omega1_hat, invKsq)
-
+            # Construct the full path to the .mat file
+            # Go up one directory before going into ICs
+            if NX % 2 != 0:
+                IC_DIR = "data/ICs/NX" + str(NX - 1) + "/"
             else:
-                # Path of Initial Conditions
+                IC_DIR = "data/ICs/NX" + str(NX) + "/"
 
-                # Get the absolute path to the directory
-                base_path = Path(__file__).parent.absolute()
+            IC_filename = str(ICnum) + ".mat"
+            file_path = os.path.join(base_path, "..", IC_DIR, IC_filename)
 
-                # Construct the full path to the .mat file
-                # Go up one directory before going into ICs
-                if NX % 2  != 0:
-                    IC_DIR = 'data/ICs/NX' + str(NX-1) + '/'
-                else:
-                    IC_DIR = 'data/ICs/NX' + str(NX) + '/'
+            # Resolve the '..' to compute the actual directory
+            file_path = Path(file_path).resolve()
 
-                IC_filename = str(ICnum) + '.mat'
-                file_path = os.path.join(base_path, "..", IC_DIR, IC_filename)
+            # -------------- Loading Initial condition (***) --------------
 
-                # Resolve the '..' to compute the actual directory
-                file_path = Path(file_path).resolve()
+            data_Poi = loadmat(file_path)
+            Omega1 = data_Poi["Omega"]
+            if NX % 2 != 0:
+                Omega1 = regrid(Omega1, NX, NX)
 
-                # -------------- Loading Initial condition (***) --------------
+            Omega1_hat = np.fft.rfft2(Omega1)
+            Omega0_hat = Omega1_hat
+            Psi1_hat = Omega2Psi_spectral(Omega1_hat, invKsq)
+            Psi0_hat = Psi1_hat
+            time = 0.0
 
-                data_Poi = loadmat(file_path)
-                Omega1 = data_Poi["Omega"]
-                if NX % 2  != 0:
-                    Omega1 = regrid(Omega1, NX, NX)
+            # Get the last file name (filenames are integers)
+            last_file_number_data = get_last_file(SAVE_DIR_DATA)
+            last_file_number_IC = get_last_file(SAVE_DIR_IC)
 
-                Omega1_hat = np.fft.rfft2(Omega1)
-                Omega0_hat = Omega1_hat
-                Psi1_hat = Omega2Psi_spectral(Omega1_hat, invKsq)
-                Psi0_hat = Psi1_hat
-                time = 0.0
+            # Set last File numbers
+            if last_file_number_data is None:
+                print(f"Last data file number: {last_file_number_data}")
+                last_file_number_data = 0
+                print("Updated last data file number to " + str(last_file_number_data))
+            else:
+                raise ValueError(
+                    "Data already exists in the results folder for this case, either resume the simulation (resumeSim = True) or delete data to start a new simulation"
+                )
 
-                # Get the last file name (filenames are integers)
-                last_file_number_data = get_last_file(SAVE_DIR_DATA)
-                last_file_number_IC = get_last_file(SAVE_DIR_IC)
+            if last_file_number_IC is None:
+                print(f"Last IC file number: {last_file_number_IC}")
+                last_file_number_IC = 0
+                print("Updated last IC file number to " + str(last_file_number_IC))
+            else:
+                raise ValueError(
+                    "Data already exists in the results folder for this case, either resume the simulation (resumeSim = True) or delete data to start a new simulation"
+                )
 
-                # Set last File numbers
-                if last_file_number_data is None:
-                    print(f"Last data file number: {last_file_number_data}")
-                    last_file_number_data = 0
-                    print("Updated last data file number to " + str(last_file_number_data))
-                else:
-                    raise ValueError("Data already exists in the results folder for this case, either resume the simulation (resumeSim = True) or delete data to start a new simulation")
+    return (
+        Omega0_hat,
+        Omega1_hat,
+        Psi0_hat,
+        Psi1_hat,
+        time,
+        last_file_number_IC,
+        last_file_number_data,
+    )
 
-                if last_file_number_IC is None:
-                    print(f"Last IC file number: {last_file_number_IC}")
-                    last_file_number_IC = 0
-                    print("Updated last IC file number to " + str(last_file_number_IC))
-                else:
-                    raise ValueError("Data already exists in the results folder for this case, either resume the simulation (resumeSim = True) or delete data to start a new simulation")
-            
-        return Omega0_hat, Omega1_hat, Psi0_hat, Psi1_hat, time,last_file_number_IC, last_file_number_data
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     import sys
-    sys.path.append('examples')
-    sys.path.append('py2d')
-    sys.path.append('.')
-    #SGSModel_list = ['NoSGS', 'PiOmegaGM2', 'PiOmegaGM4', 'PiOmegaGM6']
+
+    sys.path.append("examples")
+    sys.path.append("py2d")
+    sys.path.append(".")
+    # SGSModel_list = ['NoSGS', 'PiOmegaGM2', 'PiOmegaGM4', 'PiOmegaGM6']
     # SGSModel_list = ['SMAG','DSMAG','DSMAG_tau_Local','DSMAG_sigma_Local']
-    SGSModel_list = ['DSMAG_tau_Local_LocalS','DSMAG_sigma_Local_LocalS']
-    #SGSModel_list = [ 'LEITH', 'DLEITH', DLEITH_tau_Local', 'DLEITH_sigma_Local']
+    SGSModel_list = ["DSMAG_tau_Local_LocalS", "DSMAG_sigma_Local_LocalS"]
+    # SGSModel_list = [ 'LEITH', 'DLEITH', DLEITH_tau_Local', 'DLEITH_sigma_Local']
     for SGSModel_string in SGSModel_list:
         # Script to call the function with the given parameters
-        Py2D_solver(Re=20e3, # Reynolds number
-                       fkx=4, # Forcing wavenumber in x
-                       fky=0, # Forcing wavenumber in y
-                       alpha=0.1, # Rayleigh drag coefficient
-                       beta=20, # Coriolis parameter
-                       NX=128, # Number of grid points in x and y '32', '64', '128', '256', '512'
-                       SGSModel_string=SGSModel_string, # SGS model to use 'NoSGS', 'SMAG', 'DSMAG', 'LEITH', 'DLEITH', 'PiOmegaGM2', 'PiOmegaGM4', 'PiOmegaGM6'
-                       eddyViscosityCoeff=0.17, # Coefficient for eddy viscosity models: SMAG and LEITH
-                       dt=5e-4, # Time step
-                       saveData=True, # Save data
-                       dealias=True, # dealias
-                       tSAVE=1.0, # Time interval to save data
-                       tTotal=10.0, # Total time of simulation
-                       readTrue=False,
-                       ICnum=1, # Initial condition number: Choose between 1 to 20
-                       resumeSim=False, # tart new simulation (False) or resume simulation (True)
-                       )
+        Py2D_solver(
+            Re=20e3,  # Reynolds number
+            fkx=4,  # Forcing wavenumber in x
+            fky=0,  # Forcing wavenumber in y
+            alpha=0.1,  # Rayleigh drag coefficient
+            beta=20,  # Coriolis parameter
+            NX=128,  # Number of grid points in x and y '32', '64', '128', '256', '512'
+            SGSModel_string=SGSModel_string,  # SGS model to use 'NoSGS', 'SMAG', 'DSMAG', 'LEITH', 'DLEITH', 'PiOmegaGM2', 'PiOmegaGM4', 'PiOmegaGM6'
+            eddyViscosityCoeff=0.17,  # Coefficient for eddy viscosity models: SMAG and LEITH
+            dt=5e-4,  # Time step
+            saveData=True,  # Save data
+            dealias=True,  # dealias
+            tSAVE=1.0,  # Time interval to save data
+            tTotal=10.0,  # Total time of simulation
+            readTrue=False,
+            ICnum=1,  # Initial condition number: Choose between 1 to 20
+            resumeSim=False,  # tart new simulation (False) or resume simulation (True)
+        )
