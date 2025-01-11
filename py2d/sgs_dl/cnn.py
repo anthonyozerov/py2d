@@ -19,7 +19,7 @@ class CNN(L.LightningModule):
 
         y_cnn = self.cnn(x)
         # MSE loss
-        mse_loss = self.loss(y_cnn, y) 
+        mse_loss = self.loss(y_cnn, y)
         loss = {"loss": mse_loss}
 
         self.log_dict(loss, on_epoch=True)
@@ -31,7 +31,7 @@ class CNN(L.LightningModule):
 
         y_cnn = self.cnn(x)
         # MSE loss
-        mse_loss = self.loss(y_cnn, y) 
+        mse_loss = self.loss(y_cnn, y)
         self.log("val_loss", mse_loss, on_epoch=True)
 
     def configure_optimizers(self):
