@@ -12,15 +12,13 @@ import glob
 
 # --------------------------------------------------------------------------
 def gen_path(NX, dt, ICnum, Re, 
-             fkx, fky, alpha, beta, SGSModel_string, dealias,
-             cnn_config_path):
+             fkx, fky, alpha, beta, SGSModel_string, dealias):
     # Snapshots of data save at the following directory
     if dealias:
         dataType_DIR = 'Re' + str(int(Re)) + '_fkx' + str(fkx) + 'fky' + str(fky) + '_r' + str(alpha) + '_b' + str(beta) + '/'
     else:
         dataType_DIR = 'Re' + str(int(Re)) + '_fkx' + str(fkx) + 'fky' + str(fky) + '_r' + str(alpha) + '_b' + str(beta) + '_alias/'
-    cnn_string = '' if cnn_config_path is None else '/'+cnn_config_path.split('/')[-1].split('.')[0]
-    SAVE_DIR = 'results/' + dataType_DIR + SGSModel_string + cnn_string + '/NX' + str(NX) + '/dt' + str(dt) + '_IC' + str(ICnum) + '/'
+    SAVE_DIR = 'results/' + dataType_DIR + SGSModel_string + '/NX' + str(NX) + '/dt' + str(dt) + '_IC' + str(ICnum) + '/'
     SAVE_DIR_DATA = SAVE_DIR + 'data/'
     SAVE_DIR_IC = SAVE_DIR + 'IC/'
 

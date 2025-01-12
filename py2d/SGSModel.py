@@ -1,6 +1,5 @@
 import jax.numpy as jnp
 import numpy as np
-import yaml
 
 from py2d.eddy_viscosity_models import eddy_viscosity_smag, characteristic_strain_rate_smag, coefficient_dsmag_PsiOmega
 from py2d.eddy_viscosity_models import eddy_viscosity_leith, characteristic_omega_leith, coefficient_dleith_PsiOmega
@@ -16,9 +15,11 @@ from py2d.sgs_dl.init import initialize_model, initialize_model_norm
 
 class SGSModel:
 
-    def __init__(self, Kx, Ky, Ksq, Delta, method = 'NoSGS', C_MODEL=0, dealias=True, cnn_config_path=None):
-        self.cnn_config_path = cnn_config_path
+    def __init__(self, Kx, Ky, Ksq, Delta, method = 'NoSGS', C_MODEL=0, dealias=True, full_config=None):
+
+        self.full_config = full_config
         self.set_method(method)
+
         # Constants
         self.Kx = Kx
         self.Ky = Ky
@@ -104,11 +105,11 @@ class SGSModel:
         # NN models
         elif method == 'CNN':
             self.calculate = self.cnn_method
+            print(self.full_config)
+            from py2d.sgs_dl.utils import verify_cnn_config
+            verify_cnn_config(self.full_config)
 
-            assert self.cnn_config_path is not None, "CNN config path must be provided"
 
-            with open(self.cnn_config_path) as f:
-                self.cnn_config = yaml.safe_load(f)
         #----------------------
         elif method == 'GAN':
             self.calculate = self.gan_method
@@ -476,14 +477,16 @@ class SGSModel:
         Psi = jnp.fft.irfft2(Psi_hat)
         Omega = jnp.fft.irfft2(Omega_hat)
 
-        whichlib = self.cnn_config['library']
+        whichlib = self.full_config['library']
 
         # initialize cnn if not already initialized
         if not hasattr(self, 'model'):
-            self.model = initialize_model(self.cnn_config['model_path'], whichlib)
-            self.model_norm = initialize_model_norm(self.cnn_config['norm_path'])
+            self.model = initialize_model(self.full_config['cnn_path'], whichlib)
+            self.model_norm = initialize_model_norm(self.full_config['norm_path'])
 
-        input_stepnorm = self.cnn_config['input_stepnorm']
+        input_stepnorm = self.full_config['input_stepnorm']
+        if 'nchw_map' in self.full_config['cnn_config']:
+            reorder = self.full_config['cnn_config']['nchw_map']
 
         # pass Psi, Omega into the model
         model_output = evaluate_model(
@@ -491,13 +494,14 @@ class SGSModel:
                 self.model_norm,
                 {'psi': Psi, 'omega': Omega},
                 whichlib=whichlib,
-                input_stepnorm=input_stepnorm
+                input_stepnorm=input_stepnorm,
+                reorder=reorder
             )
 
         # make output array float64
         model_output = model_output.astype(jnp.float64)
 
-        if self.cnn_config['resid']:
+        if 'resid' in self.full_config:
             Omega_hat = self.Omega_hat
             U_hat, V_hat = self.U_hat, self.V_hat
             PiOmega_GM4 = PiOmegaGM4_gaussian(Omega_hat=Omega_hat, U_hat=U_hat, V_hat=V_hat, Kx=Kx, Ky=Ky, Delta=Delta)

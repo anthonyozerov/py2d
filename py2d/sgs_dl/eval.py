@@ -3,6 +3,10 @@ import jax.numpy as jnp
 
 
 def get_converter(whichlib):
+    """
+    Given a library name, get a function or class which will convert
+    numpy arrays to the appropriate library's tensor type.
+    """
     if whichlib == "pytorch":
         import torch
         converter = torch.Tensor
@@ -20,8 +24,10 @@ def get_converter(whichlib):
     return converter
 
 
-def inference_pytorch(model, input_data):
+def inference_pytorch(model, input_data, reorder=None):
     import torch
+
+    assert reorder is None, "Axis reordering not implemented for PyTorch"
 
     # disable gradient calculations
     with torch.no_grad():
@@ -34,8 +40,10 @@ def inference_pytorch(model, input_data):
     return output
 
 
-def inference_tensorflow(model, input_data):
+def inference_tensorflow(model, input_data, reorder=None):
     import tensorflow as tf
+
+    assert reorder is None, "Axis reordering not implemented for Tensorflow"
 
     input_data = tf.cast(tf.stack(input_data), tf.float32)
     output = model(input_data)[0].numpy()
@@ -43,23 +51,33 @@ def inference_tensorflow(model, input_data):
     return output
 
 
-def inference_onnx(model, input_data):
+def inference_onnx(model, input_data, reorder=None):
     input_data = np.stack(input_data).astype(np.float32)[np.newaxis, :, :, :]
-    # currently it is [1, CHANNELS, 128, 128]
-    # need to convert to [1, 128, 128, CHANNELS]
-    input_data = np.transpose(input_data, (0, 2, 3, 1))
+    # currently it is [1, CHANNELS, NX, NX]
 
-    output = model.run(None, {"conv2d_input": input_data})[0]
+    # reorder the axes of the input data if needed
+    if reorder is not None:
+        input_data = np.moveaxis(input_data, [0, 1, 2, 3], reorder)
+
+    output = model.run(None, {model.get_inputs()[0].name: input_data})[0]
+
+    # reorder the axes of the output data if needed
+    if reorder is not None:
+        output = np.moveaxis(output, reorder, [0, 1, 2, 3])
+
     output = np.squeeze(output)
 
     return output
 
 
-def evaluate_model(model, model_norm, input_data_dict, whichlib, input_stepnorm=False):
+def evaluate_model(model, model_norm, input_data_dict, whichlib, input_stepnorm=False, reorder=None):
     input_data = []
 
+    # get the appropriate np.array -> tensor converter
     converter = get_converter(whichlib)
 
+    # construct a list of input tensors, with one tensor for each input channel.
+    # input channels are normalized.
     for name, data in input_data_dict.items():
         data = np.array(data)
 
@@ -70,6 +88,7 @@ def evaluate_model(model, model_norm, input_data_dict, whichlib, input_stepnorm=
 
         input_data.append(converter(data_norm))
 
+    # dict of inference functions
     inferencers = {
         "pytorch": inference_pytorch,
         "tensorflow": inference_tensorflow,
@@ -79,8 +98,12 @@ def evaluate_model(model, model_norm, input_data_dict, whichlib, input_stepnorm=
     if whichlib not in inferencers.keys():
         raise ValueError(f"Unsupported library {whichlib}")
 
-    output = inferencers[whichlib](model, input_data)
-
+    # apply the inference function for the appropriate library
+    output = inferencers[whichlib](model, input_data, reorder)
+    # denormalize the output
     output = output * model_norm["sdev_pi"] + model_norm["mean_pi"]
+
+    # ensure the output shape is the same as the input shape (i.e. [NX, NX])
+    assert output.shape == data.shape
 
     return output

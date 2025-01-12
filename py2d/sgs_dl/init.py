@@ -38,9 +38,15 @@ def initialize_onnx_model(filename):
         providers = ["CPUExecutionProvider"]
     sess = rt.InferenceSession(filename, providers=providers)
     print(sess.get_providers())
+    return sess
 
 
 def initialize_model(filename, whichlib):
+    """
+    Initialize the DL SGS model from a file.
+    """
+
+    # dict of initializing functions
     initializers = {
         "pytorch": initialize_pytorch_model,
         "tensorflow": initialize_tensorflow_model,
@@ -53,7 +59,13 @@ def initialize_model(filename, whichlib):
     if not os.path.exists(filename):
         raise FileNotFoundError(filename)
 
-    return initializers[whichlib](filename)
+    # return a moddel initialized with the function
+    # from the appropriate library
+    model = initializers[whichlib](filename)
+
+    assert model is not None, "Model not initialized"
+
+    return model
 
 
 def initialize_model_norm(filename):

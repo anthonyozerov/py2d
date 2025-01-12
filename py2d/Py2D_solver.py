@@ -16,7 +16,6 @@ from jax import jit
 import numpy as nnp
 import jax.numpy as np
 from scipy.io import loadmat, savemat
-import time as runtime
 from timeit import default_timer as timer
 from tqdm import tqdm
 
@@ -25,7 +24,7 @@ print("JAX is using ", jax.default_backend(), jax.devices())
 # Import Custom Module
 from py2d.convection_conserved import convection_conserved, convection_conserved_dealias
 from py2d.convert import Omega2Psi_spectral, Psi2UV_spectral
-from py2d.SGSModel import *
+from py2d.SGSModel import SGSModel
 from py2d.util import regrid
 
 # from py2d.uv2tau_CNN import *
@@ -38,8 +37,6 @@ from py2d.initialize import (
 from py2d.datamanager import (
     gen_path,
     get_last_file,
-    set_last_file,
-    save_settings,
     pretty_print_table,
 )
 
@@ -73,7 +70,8 @@ def Py2D_solver(
     readTrue,
     ICnum,
     resumeSim,
-    cnn_config_path=None,
+    save_dir=None,
+    full_config=None,
 ):
     # -------------- RUN Configuration --------------
     # Use random initial condition or read initialization from a file or use
@@ -174,19 +172,27 @@ def Py2D_solver(
 
     # -------------- Directory to store data ------------------
     # Snapshots of data save at the following directory
-    SAVE_DIR, SAVE_DIR_DATA, SAVE_DIR_IC = gen_path(
-        NX,
-        dt,
-        ICnum,
-        Re,
-        fkx,
-        fky,
-        alpha,
-        beta,
-        SGSModel_string,
-        dealias,
-        cnn_config_path,
-    )
+    if save_dir is None:
+        SAVE_DIR, SAVE_DIR_DATA, SAVE_DIR_IC = gen_path(
+            NX,
+            dt,
+            ICnum,
+            Re,
+            fkx,
+            fky,
+            alpha,
+            beta,
+            SGSModel_string,
+            dealias,
+        )
+    else:
+
+        if save_dir[-1] != "/":
+            save_dir = save_dir + "/"
+
+        SAVE_DIR = save_dir
+        SAVE_DIR_DATA = SAVE_DIR + "data/"
+        SAVE_DIR_IC = SAVE_DIR + "IC/"
 
     # Create directories if they aren't present
     try:
@@ -272,7 +278,7 @@ def Py2D_solver(
         method=SGSModel_string,
         C_MODEL=eddyViscosityCoeff,
         dealias=dealias,
-        cnn_config_path=cnn_config_path,
+        full_config=full_config,
     )
     # PiOmega_eddyViscosity_model.set_method(SGSModel_string) # Set SGS model to calculate PiOmega and Eddy Viscosity
 
@@ -291,7 +297,6 @@ def Py2D_solver(
     # -------------- Main iteration loop --------------
     print("-------------- Main iteration loop --------------")
     ## 0 meanns previous time step, 1 means current time step
-    start_time = runtime.time()
 
     for it in tqdm(range(maxit)):
         if it == 0:
