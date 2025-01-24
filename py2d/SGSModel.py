@@ -487,6 +487,8 @@ class SGSModel:
         input_stepnorm = self.full_config['input_stepnorm']
         if 'nchw_map' in self.full_config['cnn_config']:
             reorder = self.full_config['cnn_config']['nchw_map']
+        else:
+            reorder = None
 
         # pass Psi, Omega into the model
         model_output = evaluate_model(
@@ -501,7 +503,7 @@ class SGSModel:
         # make output array float64
         model_output = model_output.astype(jnp.float64)
 
-        if 'resid' in self.full_config:
+        if 'residual' in self.full_config['cnn_config']:
             Omega_hat = self.Omega_hat
             U_hat, V_hat = self.U_hat, self.V_hat
             PiOmega_GM4 = PiOmegaGM4_gaussian(Omega_hat=Omega_hat, U_hat=U_hat, V_hat=V_hat, Kx=Kx, Ky=Ky, Delta=Delta)

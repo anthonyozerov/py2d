@@ -12,6 +12,6 @@ def verify_cnn_config(config):
         "CNN config must be provided to run CNN"
     assert 'input_stepnorm' in config, \
         "Input stepnorm must be provided to run CNN"
-    if 'resid' in config['cnn_config']:
-        assert config['cnn_config']['resid'] == 'gm4', \
+    if 'residual' in config['cnn_config']:
+        assert config['cnn_config']['residual'] == 'gm4', \
             "Only GM4 residual is supported for CNN"
