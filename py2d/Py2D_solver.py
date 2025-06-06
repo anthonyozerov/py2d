@@ -378,7 +378,9 @@ def Py2D_solver(
             # eddyTurnoverTime = 1 / np.sqrt(np.mean(Omega ** 2))
             enstrophy = 0.5 * np.mean(Omega**2)
 
-            if SGSModel_string != "NoSGS":
+            PiOmega_cpu = None
+            # if PiOmega_hat is an array type (not a scalar)
+            if isinstance(PiOmega_hat, np.ndarray):
                 PiOmega = np.real(np.fft.irfft2(PiOmega_hat, s=[NX, NX]))
                 PiOmega_cpu = nnp.array(PiOmega)
 
@@ -408,7 +410,7 @@ def Py2D_solver(
                     raise ValueError(error_message)
                 else:
                     data_dict = {"Omega": Omega_cpu, "time": time}
-                    if SGSModel_string != "NoSGS":
+                    if PiOmega_cpu is not None:
                         data_dict = data_dict | {"PiOmega": PiOmega_cpu}
                     savemat(filename_data + ".mat", data_dict)
                     savemat(
